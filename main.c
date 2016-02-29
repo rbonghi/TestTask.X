@@ -20,7 +20,7 @@
 #include <math.h>
 #include <pwm12.h>
 #include "system.h"
-
+#include "motor_init.h"
 
 void InitTimer2(void) {
     //T2CON = 10100000 00000000
@@ -37,46 +37,6 @@ void InitTimer2(void) {
     IEC0bits.T2IE = 1; // Enable Timer1 interrupt
 
     T2CONbits.TON = 1; // Start Timer
-}
-
-void InitPWM(void) {
-    // Holds the value to be loaded into dutycycle register
-    unsigned int period;
-    // Holds the value to be loaded into special event compare register
-    unsigned int sptime;
-    // Holds PWM configuration value
-    unsigned int config1;
-    // Holds the value be loaded into PWMCON1 register
-    unsigned int config2;
-    // Holds the value to config the special event trigger postscale and duty cycle
-    unsigned int config3;
-    // Config PWM
-    period = 2048; // PWM F=19,340Hz counting UP 12bit resolution @ Fcy=39.628 MHz
-    sptime = 0x0;
-    // 1:1 postscaler, 1:1 prescale, free running mode
-    // PWM time base ON, count up
-    config1 = PWM1_DIS & PWM1_IDLE_CON & PWM1_OP_SCALE1 & PWM1_IPCLK_SCALE1 &
-            PWM1_MOD_FREE;
-    // PWM1H e PWM1L enabled in complementar mode
-    // dsPICs with 3 pairs of PWM pins have one timer only (A)
-    config2 = PWM1_MOD1_COMP & PWM1_PEN1L & PWM1_PEN1H &
-            PWM1_MOD2_COMP & PWM1_PEN2L & PWM1_PEN2H &
-            PWM1_PDIS3H & PWM1_PDIS3L;
-    config3 = PWM1_SEVOPS1 & PWM1_OSYNC_PWM & PWM1_UEN;
-    OpenMCPWM1(period, sptime, config1, config2, config3);
-    // Dead Time Unit A assigned to both 1 & 2 PWM pairs
-    /* SetMCPWM1DeadTimeAssignment(PWM1_DTS1A_UA & PWM1_DTS1I_UA & PWM1_DTS2A_UA & PWM1_DTS2I_UA); */
-    P1DTCON2bits.DTS1A = 0;
-    P1DTCON2bits.DTS1I = 0;
-    P1DTCON2bits.DTS2A = 0;
-    P1DTCON2bits.DTS2I = 0;
-    // Dead time 100ns = 0.2% of PWM period
-    SetMCPWM1DeadTimeGeneration(PWM1_DTA4 & PWM1_DTAPS1);
-    // duty cycle reg=1, duty cycle=50% (motore fermo in LAP mode , update disable=0
-    SetDCMCPWM1(1, 2048, 0);
-    SetDCMCPWM1(2, 2048, 0);
-
-    ConfigIntMCPWM1(PWM1_INT_DIS);
 }
 
 /******************************************************************************/
@@ -114,7 +74,7 @@ void Task2(int argc, int *argv) {
 int16_t main(void)
 {
     ConfigureOscillator();
-    
+    Peripherals_Init();
     // Encoders
     _TRISB10 = 1;
     _TRISB11 = 1;
@@ -135,8 +95,15 @@ int16_t main(void)
     InitEvents();
     
     InitTimer2();
+    
+    //Enable motors
     InitPWM();
     PTCONbits.PTEN = 1;
+    InitIC(0);
+    InitIC(1);
+    InitQEI(0);
+    InitQEI(1);
+    
     
     // Init task
     hModule_t module_1a = register_module(&_TASK_1A);
@@ -160,8 +127,4 @@ int16_t main(void)
     {
 
     }
-}
-
-void __attribute__((interrupt, auto_psv, shadow)) _T2Interrupt(void) {
-    IFS0bits.T2IF = 0; // interrupt flag reset
 }

@@ -26,6 +26,7 @@ extern "C" {
 #define TMR2_VALUE 0xFFFF       // Timer2 - Value for overflow
 
 #define PWM_TIMER_LEVEL 7
+#define INPUT_CAPTURE_LEVEL 6
 #define SYS_TIMER_LEVEL 5
 
 
@@ -37,6 +38,7 @@ extern "C" {
 void ConfigureOscillator(void);
 void InitEvents(void);
 void InitTimer1(void);
+void Peripherals_Init(void);
 
 #ifdef	__cplusplus
 }

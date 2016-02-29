@@ -133,3 +133,43 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     task_manager();
     IFS0bits.T1IF = 0; // Clear Timer 1 Interrupt Flag
 }
+
+void Peripherals_Init(void) {
+    
+    // Peripheral PIN remapping
+    //*************************************************************
+    // Unlock Registers
+    //*************************************************************
+    asm volatile ( "mov #OSCCONL, w1 \n"
+                "mov #0x45, w2 \n"
+                "mov #0x57, w3 \n"
+                "mov.b w2, [w1] \n"
+                "mov.b w3, [w1] \n"
+                "bclr OSCCON, #6 ");
+    // Input capture
+    RPINR7bits.IC1R = 10; // IC1 To Pin RP10
+    RPINR7bits.IC2R = 6; // IC2 To Pin RP6
+    // QEI
+    RPINR14bits.QEA1R = 10; // QEA1 To Pin RP10
+    RPINR14bits.QEB1R = 11; // QEB1 To Pin RP11
+    RPINR16bits.QEA2R = 5; // QEA2 To Pin RP5
+    RPINR16bits.QEB2R = 6; // QEB2 To Pin RP6
+    // UART
+    RPINR18bits.U1RXR = 21; // U1RX To Pin RP21, CTS tied Vss
+    RPINR18bits.U1CTSR = 0x1f;
+    RPOR10bits.RP20R = 3; // U1Tx To Pin RP20
+
+    RPINR19bits.U2RXR = 3; // U2RX To Pin RP3, CTS tied Vss
+    RPINR19bits.U2CTSR = 0x1f;
+    RPOR1bits.RP2R = 5; // U2Tx To Pin RP2
+    //*************************************************************
+    // Lock Registers
+    //*************************************************************
+    asm volatile ( "mov #OSCCONL, w1 \n"
+                "mov #0x45, w2 \n"
+                "mov #0x57, w3 \n"
+                "mov.b w2, [w1] \n"
+                "mov.b w3, [w1] \n"
+                "bset OSCCON, #6");
+    // *********************************** Peripheral PIN selection
+}
