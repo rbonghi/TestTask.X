@@ -22,6 +22,10 @@ extern "C" {
 #define FRTMR1 1000             // Timer1 - Value in herz [Hz]
 #define TCTMR1 1/FRTMR1         // Timer1 - Value in seconds [s]
 #define TMR1_VALUE FCY/FRTMR1   // Timer1 - Value in CLK
+#define FRTMR2 SYS_FREQ
+#define TMR2_VALUE 0xFFFF       // Timer2 - Value for overflow
+
+#define PWM_TIMER_LEVEL 7
 #define SYS_TIMER_LEVEL 5
 
 
