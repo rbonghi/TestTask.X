@@ -17,6 +17,7 @@
 #include <stdint.h>        /* Includes uint16_t definition                    */
 #include <stdbool.h>       /* Includes true/false definition                  */
 
+#include <math.h>
 #include <system/events.h>
 #include <system/task_manager.h>
 
@@ -60,6 +61,25 @@ hardware_bit_t OC2IF = REGISTER_INIT(IFS0, 6);
 hardware_bit_t OC3IF = REGISTER_INIT(IFS1, 9);
 
 /******************************************************************************/
+/* System Level Functions                                                     */
+/******************************************************************************/
+
+void ConfigureOscillator(void) {
+    PLLFBD = 30; // M=32  //Old configuration: PLLFBD=29 - M=31
+    CLKDIVbits.PLLPOST = 0; // N1=2
+    CLKDIVbits.PLLPRE = 0; // N2=2
+    // Disable Watch Dog Timer
+    RCONbits.SWDTEN = 0;
+    // Clock switching to incorporate PLL
+    // Initiate Clock Switch to Primary
+    __builtin_write_OSCCONH(0x03); // Oscillator with PLL (NOSC=0b011)
+    __builtin_write_OSCCONL(0x01); // Start clock switching
+    while (OSCCONbits.COSC != 0b011); // Wait for Clock switch to occur
+    while (OSCCONbits.LOCK != 1) {
+    }; // Wait for PLL to lock
+}
+
+/******************************************************************************/
 /* InitTimer                                                                  */
 /******************************************************************************/
 
@@ -82,12 +102,39 @@ void InitTimer1(void) {
 }
 
 /******************************************************************************/
+/* Generic tasks                                                              */
+/******************************************************************************/
+
+#define TASK_1A "TASK_1A"
+static string_data_t _TASK_1A = {TASK_1A, sizeof(TASK_1A)};
+#define TASK_1B "TASK_1B"
+static string_data_t _TASK_1B = {TASK_1B, sizeof(TASK_1B)};
+
+#define TASK_2 "TASK_2"
+static string_data_t _TASK_2 = {TASK_2, sizeof(TASK_2)};
+
+void Task1(int argc, int *argv) {
+    int data = argv[0];
+    float p = cosf(data);
+    float pp = expf(p);
+    int a = 1;
+    a++;
+}
+
+void Task2(int argc, int *argv) {
+    int data = argv[0];
+    float p = cosf(data);
+    int b = 1;
+    b++;
+}
+
+/******************************************************************************/
 /* Main Program                                                               */
 /******************************************************************************/
 
 int16_t main(void)
 {
-    
+    ConfigureOscillator();
     /// Register event controller
     init_events(&TMR1, &PR1);
     
@@ -110,8 +157,29 @@ int16_t main(void)
     EVENT_PRIORITY_HIGH_P = EVENT_PRIORITY_HIGH_LEVEL;
     register_interrupt(EVENT_PRIORITY_HIGH, &OC2IF);
     EVENT_PRIORITY_HIGH_ENABLE = 1;
-
+    
+    /// Initialization task controller
+    task_init(FRTMR1);
+    
     InitTimer1();           ///< Open Timer1 for clock system
+    
+    // Init task
+    hModule_t module_1a = register_module(&_TASK_1A);
+    hEvent_t event_1a = register_event_p(module_1a, &Task1, EVENT_PRIORITY_MEDIUM);
+    hTask_t task_1a = task_load_data(event_1a, 1000, 1, 1);
+    task_set(task_1a, RUN);
+    
+    // Init task
+    hModule_t module_1b = register_module(&_TASK_1B);
+    hEvent_t event_1b = register_event_p(module_1b, &Task1, EVENT_PRIORITY_MEDIUM);
+    hTask_t task_1b = task_load_data(event_1b, 1000, 1, 2);
+    task_set(task_1b, RUN);
+    
+    // Init task
+    hModule_t module_2 = register_module(&_TASK_2);
+    hEvent_t event_2 = register_event_p(module_2, &Task2, EVENT_PRIORITY_MEDIUM);
+    hTask_t task_2 = task_load_data(event_2, 1000, 1, 10);
+    task_set(task_2, RUN);
     
     while(1)
     {
